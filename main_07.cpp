@@ -1,5 +1,5 @@
-// https://vulkan-tutorial.com/en/Drawing_a_triangle/Graphics_pipeline_basics/Introduction
-// https://vulkan-tutorial.com/code/08_graphics_pipeline.cpp
+// https://vulkan-tutorial.com/en/Drawing_a_triangle/Presentation/Image_views
+// https://vulkan-tutorial.com/code/07_image_views.cpp
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -121,7 +121,6 @@ private:
         createLogicalDevice();
         createSwapChain();
         createImageViews();
-        createGraphicsPipeline();
     }
 
     void mainLoop()
@@ -380,10 +379,6 @@ private:
 
             KK_VERIFY_VK(vkCreateImageView(device, &createInfo, nullptr, &swapChainImageViews[i]));
         }
-    }
-
-    void createGraphicsPipeline()
-    {
     }
 
     VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
