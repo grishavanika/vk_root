@@ -1,5 +1,5 @@
-// https://vulkan-tutorial.com/en/Drawing_a_triangle/Drawing/Framebuffers
-// https://vulkan-tutorial.com/code/13_framebuffers.cpp
+// https://vulkan-tutorial.com/en/Drawing_a_triangle/Graphics_pipeline_basics/Conclusion
+// https://vulkan-tutorial.com/code/12_graphics_pipeline_complete.cpp
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -103,7 +103,6 @@ private:
     VkFormat swapChainImageFormat{};
     VkExtent2D swapChainExtent{};
     std::vector<VkImageView> swapChainImageViews;
-    std::vector<VkFramebuffer> swapChainFramebuffers;
 
     VkRenderPass renderPass = VK_NULL_HANDLE;
     VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
@@ -129,7 +128,6 @@ private:
         createImageViews();
         createRenderPass();
         createGraphicsPipeline();
-        createFramebuffers();
     }
 
     void mainLoop()
@@ -142,10 +140,6 @@ private:
 
     void cleanup()
     {
-        for (VkFramebuffer framebuffer : swapChainFramebuffers)
-        {
-            vkDestroyFramebuffer(device, framebuffer, nullptr);
-        }
         vkDestroyPipeline(device, graphicsPipeline, nullptr);
         vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
         vkDestroyRenderPass(device, renderPass, nullptr);
@@ -529,26 +523,6 @@ private:
 
         vkDestroyShaderModule(device, fragShaderModule, nullptr);
         vkDestroyShaderModule(device, vertShaderModule, nullptr);
-    }
-
-    void createFramebuffers()
-    {
-        KK_VERIFY(swapChainImageViews.size() > 0);
-        swapChainFramebuffers.resize(swapChainImageViews.size());
-
-        for (size_t i = 0; i < swapChainImageViews.size(); i++)
-        {
-            VkImageView attachments[] = {swapChainImageViews[i]};
-            VkFramebufferCreateInfo framebufferInfo{};
-            framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-            framebufferInfo.renderPass = renderPass;
-            framebufferInfo.attachmentCount = 1;
-            framebufferInfo.pAttachments = attachments;
-            framebufferInfo.width = swapChainExtent.width;
-            framebufferInfo.height = swapChainExtent.height;
-            framebufferInfo.layers = 1;
-            KK_VERIFY_VK(vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffers[i]));
-        }
     }
 
     VkShaderModule createShaderModule(const std::vector<char>& code)
