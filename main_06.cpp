@@ -1,5 +1,5 @@
-// https://vulkan-tutorial.com/en/Drawing_a_triangle/Presentation/Image_views
-// https://vulkan-tutorial.com/code/07_image_views.cpp
+// https://vulkan-tutorial.com/en/Drawing_a_triangle/Presentation/Swap_chain
+// https://vulkan-tutorial.com/code/06_swap_chain_creation.cpp
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -101,7 +101,6 @@ private:
     std::vector<VkImage> swapChainImages{};
     VkFormat swapChainImageFormat{};
     VkExtent2D swapChainExtent{};
-    std::vector<VkImageView> swapChainImageViews;
 
     void initWindow()
     {
@@ -120,7 +119,6 @@ private:
         pickPhysicalDevice();
         createLogicalDevice();
         createSwapChain();
-        createImageViews();
     }
 
     void mainLoop()
@@ -133,10 +131,6 @@ private:
 
     void cleanup()
     {
-        for (VkImageView imageView : swapChainImageViews)
-        {
-            vkDestroyImageView(device, imageView, nullptr);
-        }
         vkDestroySwapchainKHR(device, swapChain, nullptr);
         vkDestroyDevice(device, nullptr);
         if (kEnableValidationLayers)
@@ -353,32 +347,6 @@ private:
 
         swapChainImageFormat = surfaceFormat.format;
         swapChainExtent = extent;
-    }
-
-    void createImageViews()
-    {
-        KK_VERIFY(swapChainImages.size() > 0);
-        swapChainImageViews.resize(swapChainImages.size());
-
-        for (size_t i = 0; i < swapChainImages.size(); ++i)
-        {
-            VkImageViewCreateInfo createInfo{};
-            createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-            createInfo.image = swapChainImages[i];
-            createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-            createInfo.format = swapChainImageFormat;
-            createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-            createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-            createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-            createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-            createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            createInfo.subresourceRange.baseMipLevel = 0;
-            createInfo.subresourceRange.levelCount = 1;
-            createInfo.subresourceRange.baseArrayLayer = 0;
-            createInfo.subresourceRange.layerCount = 1;
-
-            KK_VERIFY_VK(vkCreateImageView(device, &createInfo, nullptr, &swapChainImageViews[i]));
-        }
     }
 
     VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
