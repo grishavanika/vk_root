@@ -1,5 +1,5 @@
-// https://vulkan-tutorial.com/en/Drawing_a_triangle/Drawing/Rendering_and_presentation
-// https://vulkan-tutorial.com/code/15_hello_triangle.cpp
+// https://vulkan-tutorial.com/en/Drawing_a_triangle/Drawing/Command_buffers
+// https://vulkan-tutorial.com/code/14_command_buffers.cpp
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -21,8 +21,6 @@
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
-
-const int MAX_FRAMES_IN_FLIGHT = 2;
 
 const char* const kRequiredValidationLayers[] = {"VK_LAYER_KHRONOS_validation"};
 const char* const kRequiredDeviceExtensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
@@ -114,10 +112,6 @@ private:
     VkCommandPool commandPool = VK_NULL_HANDLE;
     VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
 
-    VkSemaphore imageAvailableSemaphore = VK_NULL_HANDLE;
-    VkSemaphore renderFinishedSemaphore = VK_NULL_HANDLE;
-    VkFence inFlightFence = VK_NULL_HANDLE;
-
     void initWindow()
     {
         KK_VERIFY(glfwInit());
@@ -141,7 +135,6 @@ private:
         createFramebuffers();
         createCommandPool();
         createCommandBuffer();
-        createSyncObjects();
     }
 
     void mainLoop()
@@ -149,16 +142,11 @@ private:
         while (!glfwWindowShouldClose(window))
         {
             glfwPollEvents();
-            drawFrame();
         }
-        KK_VERIFY_VK(vkDeviceWaitIdle(device));
     }
 
     void cleanup()
     {
-        vkDestroySemaphore(device, renderFinishedSemaphore, nullptr);
-        vkDestroySemaphore(device, imageAvailableSemaphore, nullptr);
-        vkDestroyFence(device, inFlightFence, nullptr);
         vkDestroyCommandPool(device, commandPool, nullptr);
         for (VkFramebuffer framebuffer : swapChainFramebuffers)
         {
@@ -436,22 +424,12 @@ private:
         subpass.colorAttachmentCount = 1;
         subpass.pColorAttachments = &colorAttachmentRef;
 
-        VkSubpassDependency dependency{};
-        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-        dependency.dstSubpass = 0;
-        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependency.srcAccessMask = 0;
-        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
         VkRenderPassCreateInfo renderPassInfo{};
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
         renderPassInfo.attachmentCount = 1;
         renderPassInfo.pAttachments = &colorAttachment;
         renderPassInfo.subpassCount = 1;
         renderPassInfo.pSubpasses = &subpass;
-        renderPassInfo.dependencyCount = 1;
-        renderPassInfo.pDependencies = &dependency;
 
         KK_VERIFY_VK(vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass));
     }
@@ -639,61 +617,6 @@ private:
         vkCmdEndRenderPass(commandBuffer);
 
         KK_VERIFY_VK(vkEndCommandBuffer(commandBuffer));
-    }
-
-    void createSyncObjects()
-    {
-        VkSemaphoreCreateInfo semaphoreInfo{};
-        semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-        VkFenceCreateInfo fenceInfo{};
-        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-        KK_VERIFY_VK(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphore));
-        KK_VERIFY_VK(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphore));
-        KK_VERIFY_VK(vkCreateFence(device, &fenceInfo, nullptr, &inFlightFence));
-    }
-
-    void drawFrame()
-    {
-        KK_VERIFY_VK(vkWaitForFences(device, 1, &inFlightFence, VK_TRUE, UINT64_MAX));
-        KK_VERIFY_VK(vkResetFences(device, 1, &inFlightFence));
-
-        uint32_t imageIndex = 0;
-        KK_VERIFY_VK(
-            vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex));
-
-        KK_VERIFY_VK(vkResetCommandBuffer(commandBuffer, /*VkCommandBufferResetFlagBits*/ 0));
-        recordCommandBuffer(commandBuffer, imageIndex);
-
-        VkSemaphore waitSemaphores[] = {imageAvailableSemaphore};
-        VkSemaphore signalSemaphores[] = {renderFinishedSemaphore};
-        VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.waitSemaphoreCount = 1;
-        submitInfo.pWaitSemaphores = waitSemaphores;
-        submitInfo.pWaitDstStageMask = waitStages;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &commandBuffer;
-        submitInfo.signalSemaphoreCount = 1;
-        submitInfo.pSignalSemaphores = signalSemaphores;
-
-        KK_VERIFY_VK(vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFence));
-
-        VkSwapchainKHR swapChains[] = {swapChain};
-
-        VkPresentInfoKHR presentInfo{};
-        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = signalSemaphores;
-        presentInfo.swapchainCount = 1;
-        presentInfo.pSwapchains = swapChains;
-        presentInfo.pImageIndices = &imageIndex;
-
-        KK_VERIFY_VK(vkQueuePresentKHR(presentQueue, &presentInfo));
     }
 
     VkShaderModule createShaderModule(const std::vector<char>& code)
