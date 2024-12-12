@@ -20,7 +20,7 @@ const uint32_t HEIGHT = 600;
 
 class HelloTriangleApplication
 {
-  public:
+public:
     void run()
     {
         initWindow();
@@ -29,7 +29,7 @@ class HelloTriangleApplication
         cleanup();
     }
 
-  private:
+private:
     GLFWwindow* _window = nullptr;
     VkInstance _instance = nullptr;
 
