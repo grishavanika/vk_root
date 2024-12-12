@@ -1,11 +1,10 @@
-// https://vulkan-tutorial.com/Drawing_a_triangle/Setup/Physical_devices_and_queue_families
-// https://vulkan-tutorial.com/code/03_physical_device_selection.cpp
+// https://vulkan-tutorial.com/Drawing_a_triangle/Setup/Validation_layers
+// https://vulkan-tutorial.com/code/02_validation_layers.cpp
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
 #include <algorithm>
 #include <cstring>
-#include <optional>
 #include <print>
 #include <vector>
 
@@ -54,16 +53,6 @@ void DestroyDebugUtilsMessengerEXT(
     }
 }
 
-struct QueueFamilyIndices
-{
-    std::optional<uint32_t> graphicsFamily;
-
-    bool isComplete() const
-    {
-        return graphicsFamily.has_value();
-    }
-};
-
 class HelloTriangleApplication
 {
 public:
@@ -77,8 +66,7 @@ public:
 
 private:
     GLFWwindow* window = nullptr;
-    VkInstance instance = VK_NULL_HANDLE;
-    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+    VkInstance instance{};
     VkDebugUtilsMessengerEXT debugMessenger{};
 
     void initWindow()
@@ -94,7 +82,6 @@ private:
     {
         createInstance();
         setupDebugMessenger();
-        pickPhysicalDevice();
     }
 
     void mainLoop()
@@ -193,59 +180,6 @@ private:
         populateDebugMessengerCreateInfo(createInfo);
 
         KK_VERIFY_VK(CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger));
-    }
-
-    void pickPhysicalDevice()
-    {
-        uint32_t deviceCount = 0;
-        KK_VERIFY_VK(vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr));
-        KK_VERIFY(deviceCount > 0);
-        std::vector<VkPhysicalDevice> devices;
-        devices.resize(deviceCount);
-        KK_VERIFY_VK(vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data()));
-
-        for (const VkPhysicalDevice& device : devices)
-        {
-            if (isDeviceSuitable(device))
-            {
-                physicalDevice = device;
-                break;
-            }
-        }
-        KK_VERIFY(physicalDevice != VK_NULL_HANDLE);
-    }
-
-    bool isDeviceSuitable(VkPhysicalDevice device)
-    {
-        const QueueFamilyIndices indices = findQueueFamilies(device);
-        return indices.isComplete();
-    }
-
-    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device)
-    {
-        uint32_t queueFamilyCount = 0;
-        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
-
-        std::vector<VkQueueFamilyProperties> queueFamilies;
-        queueFamilies.resize(queueFamilyCount);
-        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
-
-        uint32_t i = 0;
-        QueueFamilyIndices indices;
-        for (const VkQueueFamilyProperties& queueFamily : queueFamilies)
-        {
-            if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-            {
-                indices.graphicsFamily = i;
-            }
-            if (indices.isComplete())
-            {
-                break;
-            }
-            ++i;
-        }
-
-        return indices;
     }
 
     std::vector<const char*> getRequiredExtensions()
