@@ -1,5 +1,5 @@
-// https://vulkan-tutorial.com/en/Drawing_a_triangle/Setup/Logical_device_and_queues
-// https://vulkan-tutorial.com/code/04_logical_device.cpp
+// https://vulkan-tutorial.com/Drawing_a_triangle/Setup/Physical_devices_and_queue_families
+// https://vulkan-tutorial.com/code/03_physical_device_selection.cpp
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -78,10 +78,8 @@ public:
 private:
     GLFWwindow* window = nullptr;
     VkInstance instance = VK_NULL_HANDLE;
-    VkDebugUtilsMessengerEXT debugMessenger{};
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-    VkDevice device = VK_NULL_HANDLE;
-    VkQueue graphicsQueue = VK_NULL_HANDLE;
+    VkDebugUtilsMessengerEXT debugMessenger{};
 
     void initWindow()
     {
@@ -97,7 +95,6 @@ private:
         createInstance();
         setupDebugMessenger();
         pickPhysicalDevice();
-        createLogicalDevice();
     }
 
     void mainLoop()
@@ -110,7 +107,6 @@ private:
 
     void cleanup()
     {
-        vkDestroyDevice(device, nullptr);
         if (kEnableValidationLayers)
         {
             DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
@@ -217,42 +213,6 @@ private:
             }
         }
         KK_VERIFY(physicalDevice != VK_NULL_HANDLE);
-    }
-
-    void createLogicalDevice()
-    {
-        const QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
-
-        float queuePriority = 1.0f;
-
-        VkDeviceQueueCreateInfo queueCreateInfo{};
-        queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queueCreateInfo.queueFamilyIndex = indices.graphicsFamily.value();
-        queueCreateInfo.queueCount = 1;
-        queueCreateInfo.pQueuePriorities = &queuePriority;
-
-        VkPhysicalDeviceFeatures deviceFeatures{};
-
-        VkDeviceCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        createInfo.pQueueCreateInfos = &queueCreateInfo;
-        createInfo.queueCreateInfoCount = 1;
-        createInfo.pEnabledFeatures = &deviceFeatures;
-        createInfo.enabledExtensionCount = 0;
-
-        if (kEnableValidationLayers)
-        {
-            // ignored by up-to-date implementations
-            createInfo.enabledLayerCount = static_cast<uint32_t>(std::size(kRequiredValidationLayers));
-            createInfo.ppEnabledLayerNames = std::data(kRequiredValidationLayers);
-        }
-        else
-        {
-            createInfo.enabledLayerCount = 0;
-        }
-
-        KK_VERIFY_VK(vkCreateDevice(physicalDevice, &createInfo, nullptr, &device));
-        vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
     }
 
     bool isDeviceSuitable(VkPhysicalDevice device)
