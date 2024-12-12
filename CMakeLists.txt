@@ -21,3 +21,8 @@ target_link_libraries(vk_root PRIVATE glm::glm)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT "vk_root")
+# For debugging: set working directory to the project's root
+# so shaders/ path works
+set_target_properties(
+    vk_root PROPERTIES
+    VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")

@@ -1,11 +1,10 @@
-// https://vulkan-tutorial.com/en/Drawing_a_triangle/Graphics_pipeline_basics/Shader_modules
-// https://vulkan-tutorial.com/code/09_shader_modules.cpp
+// https://vulkan-tutorial.com/en/Drawing_a_triangle/Graphics_pipeline_basics/Introduction
+// https://vulkan-tutorial.com/code/08_graphics_pipeline.cpp
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
 #include <algorithm>
 #include <cstring>
-#include <fstream>
 #include <optional>
 #include <print>
 #include <set>
@@ -385,39 +384,6 @@ private:
 
     void createGraphicsPipeline()
     {
-        std::vector<char> vertShaderCode = readFile("shaders/vert_09.spv");
-        std::vector<char> fragShaderCode = readFile("shaders/frag_09.spv");
-
-        VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
-        VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
-
-        VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
-        vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-        vertShaderStageInfo.module = vertShaderModule;
-        vertShaderStageInfo.pName = "main";
-
-        VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
-        fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-        fragShaderStageInfo.module = fragShaderModule;
-        fragShaderStageInfo.pName = "main";
-
-        VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
-
-        vkDestroyShaderModule(device, fragShaderModule, nullptr);
-        vkDestroyShaderModule(device, vertShaderModule, nullptr);
-    }
-
-    VkShaderModule createShaderModule(const std::vector<char>& code)
-    {
-        VkShaderModuleCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        createInfo.codeSize = code.size();
-        createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
-        VkShaderModule shaderModule;
-        KK_VERIFY_VK(vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule));
-        return shaderModule;
     }
 
     VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
@@ -593,23 +559,6 @@ private:
             }
         }
         return true;
-    }
-
-    static std::vector<char> readFile(const std::string& filename)
-    {
-        std::ifstream file(filename, std::ios::ate | std::ios::binary);
-        KK_VERIFY(file.is_open());
-        KK_VERIFY(file);
-        std::ifstream::pos_type fileSize = file.tellg();
-        KK_VERIFY(fileSize != std::ifstream::pos_type(-1));
-        KK_VERIFY(fileSize > 0);
-        std::vector<char> buffer;
-        buffer.resize(std::size_t(fileSize));
-        file.seekg(0);
-        file.read(buffer.data(), fileSize);
-        KK_VERIFY(file);
-        file.close();
-        return buffer;
     }
 
     static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
