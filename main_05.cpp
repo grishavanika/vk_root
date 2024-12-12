@@ -1,5 +1,5 @@
-// https://vulkan-tutorial.com/en/Drawing_a_triangle/Presentation/Swap_chain
-// https://vulkan-tutorial.com/code/06_swap_chain_creation.cpp
+// https://vulkan-tutorial.com/en/Drawing_a_triangle/Presentation/Window_surface
+// https://vulkan-tutorial.com/code/05_window_surface.cpp
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -22,7 +22,6 @@ const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
 const char* const kRequiredValidationLayers[] = {"VK_LAYER_KHRONOS_validation"};
-const char* const kRequiredDeviceExtensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
 #if (0)
 const bool kEnableValidationLayers = false;
@@ -67,13 +66,6 @@ struct QueueFamilyIndices
     }
 };
 
-struct SwapChainSupportDetails
-{
-    VkSurfaceCapabilitiesKHR capabilities{};
-    std::vector<VkSurfaceFormatKHR> formats{};
-    std::vector<VkPresentModeKHR> presentModes{};
-};
-
 class HelloTriangleApplication
 {
 public:
@@ -97,11 +89,6 @@ private:
     VkQueue graphicsQueue = VK_NULL_HANDLE;
     VkQueue presentQueue = VK_NULL_HANDLE;
 
-    VkSwapchainKHR swapChain = VK_NULL_HANDLE;
-    std::vector<VkImage> swapChainImages{};
-    VkFormat swapChainImageFormat{};
-    VkExtent2D swapChainExtent{};
-
     void initWindow()
     {
         KK_VERIFY(glfwInit());
@@ -118,7 +105,6 @@ private:
         createSurface();
         pickPhysicalDevice();
         createLogicalDevice();
-        createSwapChain();
     }
 
     void mainLoop()
@@ -131,7 +117,6 @@ private:
 
     void cleanup()
     {
-        vkDestroySwapchainKHR(device, swapChain, nullptr);
         vkDestroyDevice(device, nullptr);
         if (kEnableValidationLayers)
         {
@@ -278,8 +263,7 @@ private:
         createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
         createInfo.pQueueCreateInfos = queueCreateInfos.data();
         createInfo.pEnabledFeatures = &deviceFeatures;
-        createInfo.enabledExtensionCount = static_cast<uint32_t>(std::size(kRequiredDeviceExtensions));
-        createInfo.ppEnabledExtensionNames = std::data(kRequiredDeviceExtensions);
+        createInfo.enabledExtensionCount = 0;
 
         if (kEnableValidationLayers)
         {
@@ -297,158 +281,10 @@ private:
         vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
     }
 
-    void createSwapChain()
-    {
-        SwapChainSupportDetails swapChainSupport = querySwapChainSupport(physicalDevice);
-        VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
-        VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
-        VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities);
-
-        uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
-        if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount)
-        {
-            imageCount = swapChainSupport.capabilities.maxImageCount;
-        }
-
-        VkSwapchainCreateInfoKHR createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-        createInfo.surface = surface;
-        createInfo.minImageCount = imageCount;
-        createInfo.imageFormat = surfaceFormat.format;
-        createInfo.imageColorSpace = surfaceFormat.colorSpace;
-        createInfo.imageExtent = extent;
-        createInfo.imageArrayLayers = 1;
-        createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-        QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
-        uint32_t queueFamilyIndices[] = {indices.graphicsFamily.value(), indices.presentFamily.value()};
-
-        if (indices.graphicsFamily != indices.presentFamily)
-        {
-            createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-            createInfo.queueFamilyIndexCount = 2;
-            createInfo.pQueueFamilyIndices = queueFamilyIndices;
-        }
-        else
-        {
-            createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        }
-
-        createInfo.preTransform = swapChainSupport.capabilities.currentTransform;
-        createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-        createInfo.presentMode = presentMode;
-        createInfo.clipped = VK_TRUE;
-        createInfo.oldSwapchain = VK_NULL_HANDLE;
-
-        KK_VERIFY_VK(vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain));
-        KK_VERIFY_VK(vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr));
-        swapChainImages.resize(imageCount);
-        KK_VERIFY_VK(vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data()));
-
-        swapChainImageFormat = surfaceFormat.format;
-        swapChainExtent = extent;
-    }
-
-    VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
-    {
-        KK_VERIFY(availableFormats.size() > 0);
-        for (const VkSurfaceFormatKHR& availableFormat : availableFormats)
-        {
-            if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB &&
-                availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
-            {
-                return availableFormat;
-            }
-        }
-        return availableFormats[0];
-    }
-
-    VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes)
-    {
-#if (1)
-        for (const VkPresentModeKHR& availablePresentMode : availablePresentModes)
-        {
-            if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
-            {
-                return availablePresentMode;
-            }
-        }
-#endif
-        return VK_PRESENT_MODE_FIFO_KHR;
-    }
-
-    VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities)
-    {
-        // Vulkan tells us to match the resolution of the window by setting the width and height in the currentExtent
-        // member. However, some window managers do allow us to differ here and this is indicated by setting the width
-        // and height in currentExtent to a special value: the maximum value of uint32_t
-        if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
-        {
-            // match to the resolution of the window
-            return capabilities.currentExtent;
-        }
-        // need to do on our own
-        int width_px = 0;
-        int height_px = 0;
-        // {WIDTH, HEIGHT} in GLFW is in screen coordinates; could be different to size in **pixels**
-        glfwGetFramebufferSize(window, &width_px, &height_px);
-        KK_VERIFY(width_px >= 0);
-        KK_VERIFY(height_px >= 0);
-        VkExtent2D actualExtent = {static_cast<uint32_t>(width_px), static_cast<uint32_t>(height_px)};
-        actualExtent.width =
-            std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
-        actualExtent.height =
-            std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
-        return actualExtent;
-    }
-
-    SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device)
-    {
-        SwapChainSupportDetails details;
-        KK_VERIFY_VK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities));
-        uint32_t formatCount = 0;
-        KK_VERIFY_VK(vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr));
-        KK_VERIFY(formatCount > 0);
-        details.formats.resize(formatCount);
-        KK_VERIFY_VK(vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data()));
-        uint32_t presentModeCount = 0;
-        KK_VERIFY_VK(vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr));
-        details.presentModes.resize(presentModeCount);
-        KK_VERIFY_VK(
-            vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes.data()));
-        return details;
-    }
-
     bool isDeviceSuitable(VkPhysicalDevice device)
     {
         const QueueFamilyIndices indices = findQueueFamilies(device);
-        const bool extensionsSupported = checkDeviceExtensionSupport(device);
-        KK_VERIFY(extensionsSupported);
-        SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device);
-        const bool swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
-        return indices.isComplete() && extensionsSupported && swapChainAdequate;
-    }
-
-    bool checkDeviceExtensionSupport(VkPhysicalDevice device)
-    {
-        uint32_t extensionCount = 0;
-        KK_VERIFY_VK(vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr));
-        std::vector<VkExtensionProperties> availableExtensions;
-        availableExtensions.resize(extensionCount);
-        KK_VERIFY_VK(
-            vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data()));
-
-        for (std::string_view required_device_extension : kRequiredDeviceExtensions)
-        {
-            const auto it = std::ranges::find(
-                availableExtensions, required_device_extension, &VkExtensionProperties::extensionName);
-            const bool found = (it != std::ranges::end(availableExtensions));
-            if (!found)
-            {
-                return false;
-            }
-        }
-        return true;
+        return indices.isComplete();
     }
 
     QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device)
@@ -514,13 +350,13 @@ private:
 
         for (std::string_view required_layer_name : kRequiredValidationLayers)
         {
-            const auto it = std::ranges::find(available_layers, required_layer_name, &VkLayerProperties::layerName);
-            const bool found = (it != std::ranges::end(available_layers));
-            if (!found)
+            auto it = std::ranges::find(available_layers, required_layer_name, &VkLayerProperties::layerName);
+            if (it == std::ranges::end(available_layers))
             {
                 return false;
             }
         }
+
         return true;
     }
 
