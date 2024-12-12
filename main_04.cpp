@@ -1,5 +1,5 @@
-// https://vulkan-tutorial.com/en/Drawing_a_triangle/Presentation/Window_surface
-// https://vulkan-tutorial.com/code/05_window_surface.cpp
+// https://vulkan-tutorial.com/en/Drawing_a_triangle/Setup/Logical_device_and_queues
+// https://vulkan-tutorial.com/code/04_logical_device.cpp
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -7,7 +7,6 @@
 #include <cstring>
 #include <optional>
 #include <print>
-#include <set>
 #include <vector>
 
 #if defined(NDEBUG)
@@ -58,11 +57,10 @@ void DestroyDebugUtilsMessengerEXT(
 struct QueueFamilyIndices
 {
     std::optional<uint32_t> graphicsFamily;
-    std::optional<uint32_t> presentFamily;
 
     bool isComplete() const
     {
-        return graphicsFamily.has_value() && presentFamily.has_value();
+        return graphicsFamily.has_value();
     }
 };
 
@@ -81,13 +79,9 @@ private:
     GLFWwindow* window = nullptr;
     VkInstance instance = VK_NULL_HANDLE;
     VkDebugUtilsMessengerEXT debugMessenger{};
-    VkSurfaceKHR surface;
-
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     VkDevice device = VK_NULL_HANDLE;
-
     VkQueue graphicsQueue = VK_NULL_HANDLE;
-    VkQueue presentQueue = VK_NULL_HANDLE;
 
     void initWindow()
     {
@@ -102,7 +96,6 @@ private:
     {
         createInstance();
         setupDebugMessenger();
-        createSurface();
         pickPhysicalDevice();
         createLogicalDevice();
     }
@@ -122,7 +115,6 @@ private:
         {
             DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
         }
-        vkDestroySurfaceKHR(instance, surface, nullptr);
         vkDestroyInstance(instance, nullptr);
         glfwDestroyWindow(window);
         glfwTerminate();
@@ -207,11 +199,6 @@ private:
         KK_VERIFY_VK(CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger));
     }
 
-    void createSurface()
-    {
-        KK_VERIFY_VK(glfwCreateWindowSurface(instance, window, nullptr, &surface));
-    }
-
     void pickPhysicalDevice()
     {
         uint32_t deviceCount = 0;
@@ -236,19 +223,7 @@ private:
     {
         const QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
 
-        std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-        std::set<uint32_t> uniqueQueueFamilies = {indices.graphicsFamily.value(), indices.presentFamily.value()};
-
         float queuePriority = 1.0f;
-        for (uint32_t queueFamily : uniqueQueueFamilies)
-        {
-            VkDeviceQueueCreateInfo queueCreateInfo{};
-            queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-            queueCreateInfo.queueFamilyIndex = queueFamily;
-            queueCreateInfo.queueCount = 1;
-            queueCreateInfo.pQueuePriorities = &queuePriority;
-            queueCreateInfos.push_back(queueCreateInfo);
-        }
 
         VkDeviceQueueCreateInfo queueCreateInfo{};
         queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -260,8 +235,8 @@ private:
 
         VkDeviceCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
-        createInfo.pQueueCreateInfos = queueCreateInfos.data();
+        createInfo.pQueueCreateInfos = &queueCreateInfo;
+        createInfo.queueCreateInfoCount = 1;
         createInfo.pEnabledFeatures = &deviceFeatures;
         createInfo.enabledExtensionCount = 0;
 
@@ -278,7 +253,6 @@ private:
 
         KK_VERIFY_VK(vkCreateDevice(physicalDevice, &createInfo, nullptr, &device));
         vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
-        vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
     }
 
     bool isDeviceSuitable(VkPhysicalDevice device)
@@ -304,13 +278,6 @@ private:
             {
                 indices.graphicsFamily = i;
             }
-            VkBool32 presentSupport = false;
-            KK_VERIFY_VK(vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport));
-            if (presentSupport)
-            {
-                indices.presentFamily = i;
-            }
-
             if (indices.isComplete())
             {
                 break;
