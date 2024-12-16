@@ -1,5 +1,5 @@
-// https://vulkan-tutorial.com/Drawing_a_triangle/Swap_chain_recreation
-// https://vulkan-tutorial.com/code/17_swap_chain_recreation.cpp
+// https://vulkan-tutorial.com/en/Drawing_a_triangle/Drawing/Frames_in_flight
+// https://vulkan-tutorial.com/code/16_frames_in_flight.cpp
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -119,8 +119,6 @@ private:
     std::vector<VkFence> inFlightFences;
     uint32_t currentFrame = 0;
 
-    bool framebufferResized = false;
-
     void initWindow()
     {
         KK_VERIFY(glfwInit());
@@ -128,16 +126,6 @@ private:
         glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
         window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
         KK_VERIFY(window);
-        glfwSetWindowAttrib(window, GLFW_RESIZABLE, GLFW_TRUE);
-        glfwSetWindowUserPointer(window, this);
-        glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
-    }
-
-    static void framebufferResizeCallback(GLFWwindow* window, int width, int height)
-    {
-        HelloTriangleApplication* app = static_cast<HelloTriangleApplication*>(glfwGetWindowUserPointer(window));
-        KK_VERIFY(app);
-        app->framebufferResized = true;
     }
 
     void initVulkan()
@@ -167,25 +155,8 @@ private:
         KK_VERIFY_VK(vkDeviceWaitIdle(device));
     }
 
-    void cleanupSwapChain()
-    {
-        for (VkFramebuffer framebuffer : swapChainFramebuffers)
-        {
-            vkDestroyFramebuffer(device, framebuffer, nullptr);
-        }
-        for (VkImageView imageView : swapChainImageViews)
-        {
-            vkDestroyImageView(device, imageView, nullptr);
-        }
-        vkDestroySwapchainKHR(device, swapChain, nullptr);
-    }
-
     void cleanup()
     {
-        cleanupSwapChain();
-        vkDestroyPipeline(device, graphicsPipeline, nullptr);
-        vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
-        vkDestroyRenderPass(device, renderPass, nullptr);
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
         {
             vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
@@ -193,6 +164,18 @@ private:
             vkDestroyFence(device, inFlightFences[i], nullptr);
         }
         vkDestroyCommandPool(device, commandPool, nullptr);
+        for (VkFramebuffer framebuffer : swapChainFramebuffers)
+        {
+            vkDestroyFramebuffer(device, framebuffer, nullptr);
+        }
+        vkDestroyPipeline(device, graphicsPipeline, nullptr);
+        vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+        vkDestroyRenderPass(device, renderPass, nullptr);
+        for (VkImageView imageView : swapChainImageViews)
+        {
+            vkDestroyImageView(device, imageView, nullptr);
+        }
+        vkDestroySwapchainKHR(device, swapChain, nullptr);
         vkDestroyDevice(device, nullptr);
         if (kEnableValidationLayers)
         {
@@ -202,24 +185,6 @@ private:
         vkDestroyInstance(instance, nullptr);
         glfwDestroyWindow(window);
         glfwTerminate();
-    }
-
-    void recreateSwapChain()
-    {
-        int width = 0;
-        int height = 0;
-        glfwGetFramebufferSize(window, &width, &height);
-        while ((width == 0) || (height == 0))
-        {
-            glfwGetFramebufferSize(window, &width, &height);
-            glfwWaitEvents();
-        }
-        vkDeviceWaitIdle(device);
-
-        cleanupSwapChain();
-        createSwapChain();
-        createImageViews();
-        createFramebuffers();
     }
 
     void createInstance()
@@ -417,7 +382,7 @@ private:
         createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
         createInfo.presentMode = presentMode;
         createInfo.clipped = VK_TRUE;
-        // createInfo.oldSwapchain = VK_NULL_HANDLE;
+        createInfo.oldSwapchain = VK_NULL_HANDLE;
 
         KK_VERIFY_VK(vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain));
         KK_VERIFY_VK(vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr));
@@ -707,19 +672,12 @@ private:
     {
         KK_VERIFY_VK(vkWaitForFences(
             device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX)); // wait for previous vkQueueSubmit
+        KK_VERIFY_VK(vkResetFences(device, 1, &inFlightFences[currentFrame]));
 
         uint32_t imageIndex = 0;
-        VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX,
+        KK_VERIFY_VK(vkAcquireNextImageKHR(device, swapChain, UINT64_MAX,
             imageAvailableSemaphores[currentFrame], // signal when presentation engine is finished using the image
-            VK_NULL_HANDLE, &imageIndex);
-        if (result == VK_ERROR_OUT_OF_DATE_KHR)
-        {
-            recreateSwapChain();
-            return;
-        }
-        KK_VERIFY((result == VK_SUCCESS) || (result == VK_SUBOPTIMAL_KHR));
-
-        KK_VERIFY_VK(vkResetFences(device, 1, &inFlightFences[currentFrame]));
+            VK_NULL_HANDLE, &imageIndex));
 
         KK_VERIFY_VK(vkResetCommandBuffer(commandBuffers[currentFrame], /*VkCommandBufferResetFlagBits*/ 0));
         recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
@@ -754,18 +712,7 @@ private:
         presentInfo.pSwapchains = swapChains;
         presentInfo.pImageIndices = &imageIndex;
 
-        result = vkQueuePresentKHR(presentQueue, &presentInfo);
-        if ((result == VK_ERROR_OUT_OF_DATE_KHR) //
-            || (result == VK_SUBOPTIMAL_KHR)     //
-            || framebufferResized)
-        {
-            framebufferResized = false;
-            recreateSwapChain();
-        }
-        else
-        {
-            KK_VERIFY(result == VK_SUCCESS);
-        }
+        KK_VERIFY_VK(vkQueuePresentKHR(presentQueue, &presentInfo));
 
         currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
     }
