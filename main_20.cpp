@@ -1,5 +1,5 @@
-// https://vulkan-tutorial.com/en/Vertex_buffers/Index_buffer
-// https://vulkan-tutorial.com/code/21_index_buffer.cpp
+// https://vulkan-tutorial.com/Vertex_buffers/Staging_buffer
+// https://vulkan-tutorial.com/code/20_staging_buffer.cpp
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -112,17 +112,19 @@ struct Vertex
     }
 };
 
+#if (0)
 const Vertex vertices[] = {
-    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}}, //
-    {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},  //
-    {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},   //
-    {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}   //
+    {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}}, //
+    {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},  //
+    {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}  //
 };
-
-const uint16_t indices[] = {
-    0, 1, 2, //
-    2, 3, 0, //
+#else
+const Vertex vertices[] = {
+    {{0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}}, //
+    {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},  //
+    {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}  //
 };
+#endif
 
 class HelloTriangleApplication
 {
@@ -162,8 +164,6 @@ private:
 
     VkBuffer vertexBuffer;
     VkDeviceMemory vertexBufferMemory;
-    VkBuffer indexBuffer;
-    VkDeviceMemory indexBufferMemory;
 
     std::vector<VkCommandBuffer> commandBuffers;
 
@@ -207,7 +207,6 @@ private:
         createFramebuffers();
         createCommandPool();
         createVertexBuffer();
-        createIndexBuffer();
         createCommandBuffers();
         createSyncObjects();
     }
@@ -241,8 +240,6 @@ private:
         vkDestroyPipeline(device, graphicsPipeline, nullptr);
         vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
         vkDestroyRenderPass(device, renderPass, nullptr);
-        vkDestroyBuffer(device, indexBuffer, nullptr);
-        vkFreeMemory(device, indexBufferMemory, nullptr);
         vkDestroyBuffer(device, vertexBuffer, nullptr);
         vkFreeMemory(device, vertexBufferMemory, nullptr);
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
@@ -270,19 +267,9 @@ private:
         glfwGetFramebufferSize(window, &width, &height);
         while ((width == 0) || (height == 0))
         {
-            // in case close request is there
-            if (glfwWindowShouldClose(window))
-            {
-                break;
-            }
             glfwGetFramebufferSize(window, &width, &height);
             glfwWaitEvents();
         }
-        if (glfwWindowShouldClose(window))
-        {
-            return;
-        }
-
         vkDeviceWaitIdle(device);
 
         cleanupSwapChain();
@@ -724,30 +711,6 @@ private:
         vkFreeMemory(device, stagingBufferMemory, nullptr);
     }
 
-    void createIndexBuffer()
-    {
-        VkDeviceSize bufferSize = sizeof(uint16_t) * std::size(indices);
-
-        VkBuffer stagingBuffer{};
-        VkDeviceMemory stagingBufferMemory{};
-        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer,
-            stagingBufferMemory);
-
-        void* data = nullptr;
-        KK_VERIFY_VK(vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data));
-        memcpy(data, std::data(indices), size_t(bufferSize));
-        vkUnmapMemory(device, stagingBufferMemory);
-
-        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
-
-        copyBuffer(stagingBuffer, indexBuffer, bufferSize);
-
-        vkDestroyBuffer(device, stagingBuffer, nullptr);
-        vkFreeMemory(device, stagingBufferMemory, nullptr);
-    }
-
     void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer,
         VkDeviceMemory& bufferMemory)
     {
@@ -872,9 +835,8 @@ private:
         VkBuffer vertexBuffers[] = {vertexBuffer};
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-        vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
-        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(std::size(indices)), 1, 0, 0, 0);
+        vkCmdDraw(commandBuffer, static_cast<uint32_t>(std::size(vertices)), 1, 0, 0);
 
         vkCmdEndRenderPass(commandBuffer);
 
