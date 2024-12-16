@@ -1,5 +1,5 @@
-// https://vulkan-tutorial.com/Vertex_buffers/Staging_buffer
-// https://vulkan-tutorial.com/code/20_staging_buffer.cpp
+// https://vulkan-tutorial.com/en/Vertex_buffers/Vertex_buffer_creation#page_Binding-the-vertex-buffer
+// https://vulkan-tutorial.com/code/19_vertex_buffer.cpp
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -691,81 +691,29 @@ private:
 
     void createVertexBuffer()
     {
-        VkDeviceSize bufferSize = sizeof(Vertex) * std::size(vertices);
-        VkBuffer stagingBuffer{};
-        VkDeviceMemory stagingBufferMemory;
-        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer,
-            stagingBufferMemory);
-
-        void* data = nullptr;
-        KK_VERIFY_VK(vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data));
-        memcpy(data, std::data(vertices), size_t(bufferSize));
-        vkUnmapMemory(device, stagingBufferMemory);
-
-        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
-        copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
-
-        vkDestroyBuffer(device, stagingBuffer, nullptr);
-        vkFreeMemory(device, stagingBufferMemory, nullptr);
-    }
-
-    void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer,
-        VkDeviceMemory& bufferMemory)
-    {
         VkBufferCreateInfo bufferInfo{};
         bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        bufferInfo.size = size;
-        bufferInfo.usage = usage;
+        bufferInfo.size = sizeof(Vertex) * std::size(vertices);
+        bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
         bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        KK_VERIFY_VK(vkCreateBuffer(device, &bufferInfo, nullptr, &buffer));
+        KK_VERIFY_VK(vkCreateBuffer(device, &bufferInfo, nullptr, &vertexBuffer));
 
         VkMemoryRequirements memRequirements{};
-        vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
+        vkGetBufferMemoryRequirements(device, vertexBuffer, &memRequirements);
 
         VkMemoryAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
+        allocInfo.memoryTypeIndex = findMemoryType(
+            memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        KK_VERIFY_VK(vkAllocateMemory(device, &allocInfo, nullptr, &vertexBufferMemory));
 
-        KK_VERIFY_VK(vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory));
+        KK_VERIFY_VK(vkBindBufferMemory(device, vertexBuffer, vertexBufferMemory, 0));
 
-        vkBindBufferMemory(device, buffer, bufferMemory, 0);
-    }
-
-    void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
-    {
-        VkCommandBufferAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandPool = commandPool;
-        allocInfo.commandBufferCount = 1;
-
-        VkCommandBuffer commandBuffer = nullptr;
-        KK_VERIFY_VK(vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer));
-
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-        KK_VERIFY_VK(vkBeginCommandBuffer(commandBuffer, &beginInfo));
-
-        VkBufferCopy copyRegion{};
-        copyRegion.size = size;
-        vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
-
-        KK_VERIFY_VK(vkEndCommandBuffer(commandBuffer));
-
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &commandBuffer;
-
-        KK_VERIFY_VK(vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE));
-        KK_VERIFY_VK(vkQueueWaitIdle(graphicsQueue));
-
-        vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+        void* data = nullptr;
+        KK_VERIFY_VK(vkMapMemory(device, vertexBufferMemory, 0, bufferInfo.size, 0, &data));
+        memcpy(data, std::data(vertices), size_t(bufferInfo.size));
+        vkUnmapMemory(device, vertexBufferMemory);
     }
 
     uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
