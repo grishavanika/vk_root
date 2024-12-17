@@ -1,0 +1,1 @@
+ - texture.jpg is from https://vulkan-tutorial.com/images/texture.jpg; 512x512, 3 channels
