@@ -8,3 +8,6 @@ call %MY_glslc% 18_shader_vertexbuffer.vert -o vert_18.spv
 
 call %MY_glslc% 22_shader_ubo.frag -o frag_22.spv
 call %MY_glslc% 22_shader_ubo.vert -o vert_22.spv
+
+call %MY_glslc% 26_shader_textures.frag -o frag_26.spv
+call %MY_glslc% 26_shader_textures.vert -o vert_26.spv
