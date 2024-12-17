@@ -19,6 +19,9 @@ target_link_libraries(vk_root PRIVATE glm::glm)
 # STB
 find_package(Stb REQUIRED)
 target_include_directories(vk_root PRIVATE ${Stb_INCLUDE_DIR})
+# tinyobjloader
+find_package(tinyobjloader CONFIG REQUIRED)
+target_link_libraries(vk_root PRIVATE tinyobjloader::tinyobjloader)
 
 set_property(TARGET vk_root PROPERTY CXX_STANDARD 23)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)

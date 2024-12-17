@@ -1,0 +1,1 @@
+ - viking_room.obj is from https://github.com/Overv/VulkanTutorial/tree/b42b308210b41d4b2b3d41a8c34031ddfe757406/resources

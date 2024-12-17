@@ -1,1 +1,2 @@
  - texture.jpg is from https://vulkan-tutorial.com/images/texture.jpg; 512x512, 3 channels
+ - viking_room.png is from https://github.com/Overv/VulkanTutorial/tree/b42b308210b41d4b2b3d41a8c34031ddfe757406/resources
