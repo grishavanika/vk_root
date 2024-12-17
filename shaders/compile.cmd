@@ -11,3 +11,6 @@ call %MY_glslc% 22_shader_ubo.vert -o vert_22.spv
 
 call %MY_glslc% 26_shader_textures.frag -o frag_26.spv
 call %MY_glslc% 26_shader_textures.vert -o vert_26.spv
+
+call %MY_glslc% 27_shader_depth.frag -o frag_27.spv
+call %MY_glslc% 27_shader_depth.vert -o vert_27.spv
