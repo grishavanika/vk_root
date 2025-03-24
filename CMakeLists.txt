@@ -1,7 +1,43 @@
 cmake_minimum_required(VERSION 3.11 FATAL_ERROR)
 project(vk_root)
 
-add_executable(vk_root main.cpp)
+set(PREV_SOURCES
+    main_begin.cpp
+    main_00.cpp
+    main_01.cpp
+    main_02.cpp
+    main_03.cpp
+    main_04.cpp
+    main_05.cpp
+    main_06.cpp
+    main_07.cpp
+    main_08.cpp
+    main_09.cpp
+    main_10.cpp
+    main_11.cpp
+    main_12.cpp
+    main_13.cpp
+    main_14.cpp
+    main_15.cpp
+    main_16.cpp
+    main_17.cpp
+    main_18.cpp
+    main_19.cpp
+    main_20.cpp
+    main_21.cpp
+    main_22.cpp
+    main_23.cpp
+    main_24.cpp
+    main_25.cpp
+    main_26.cpp
+    main_27.cpp
+    main_28.cpp
+    main_29.cpp
+    main_30.cpp
+)
+
+add_executable(vk_root main.cpp ${PREV_SOURCES})
+set_property(SOURCE ${PREV_SOURCES} PROPERTY VS_SETTINGS "ExcludedFromBuild=true")
 
 # Vulkan
 add_library(Vulkan_Integrated INTERFACE)
