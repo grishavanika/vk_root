@@ -6,9 +6,9 @@ add_executable(vk_root main.cpp)
 # Vulkan
 add_library(Vulkan_Integrated INTERFACE)
 target_include_directories(Vulkan_Integrated INTERFACE
-    "C:/VulkanSDK/1.3.296.0/Include")
+    "C:/VulkanSDK/1.4.309.0/Include")
 target_link_libraries(Vulkan_Integrated INTERFACE
-    "C:/VulkanSDK/1.3.296.0/Lib/vulkan-1.lib")
+    "C:/VulkanSDK/1.4.309.0/Lib/vulkan-1.lib")
 target_link_libraries(vk_root PRIVATE Vulkan_Integrated)
 # GLFW
 find_package(glfw3 CONFIG REQUIRED)
